@@ -6,14 +6,11 @@ from neo4j import GraphDatabase
 from dotenv import load_dotenv
 import argparse
 
-# Загрузка переменных из .env файла
 load_dotenv()
 
-# Настройка логирования
 logging.basicConfig(filename='app.log', filemode='w', format='%(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO, encoding='utf-8')
 
-# Аргументы командной строки для задания параметра 'n' (топ n пользователей и групп)
 parser = argparse.ArgumentParser(description="VK и Neo4j анализ")
 parser.add_argument("--n", type=int, default=5, help="Количество пользователей или групп для выборки")
 args = parser.parse_args()
@@ -30,7 +27,6 @@ def get_followers_at_depth(user_id, depth, collected_followers=None, collected_s
     if depth < 1:
         return collected_followers, collected_subscriptions
 
-    # Инициализируем контейнеры для результатов
     if collected_followers is None:
         collected_followers = []
     if collected_subscriptions is None:
@@ -45,7 +41,6 @@ def get_followers_at_depth(user_id, depth, collected_followers=None, collected_s
     visited.add(user_id)
 
     try:
-        # Получаем фолловеров
         followers_response = vk.users.getFollowers(user_id=user_id, count=100)
         if not followers_response or 'items' not in followers_response:
             logging.error(f"Фолловеры не найдены для пользователя {user_id}.")
@@ -54,7 +49,6 @@ def get_followers_at_depth(user_id, depth, collected_followers=None, collected_s
             logging.info(f"Найдено {len(followers)} фолловеров для пользователя {user_id}.")
             collected_followers.extend(followers)
 
-        # Получаем подписки
         subscriptions_response = vk.users.getSubscriptions(user_id=user_id, extended=1)
         if not subscriptions_response or 'items' not in subscriptions_response:
             logging.error(f"Подписки не найдены для пользователя {user_id}.")
@@ -62,8 +56,6 @@ def get_followers_at_depth(user_id, depth, collected_followers=None, collected_s
             subscriptions = subscriptions_response['items']
             logging.info(f"Найдено {len(subscriptions)} подписок для пользователя {user_id}.")
             collected_subscriptions.extend(subscriptions)
-
-        # Рекурсивно вызываем для каждого фолловера на более глубоком уровне
         if depth > 1:
             for follower in followers:
                 get_followers_at_depth(follower, depth - 1, collected_followers, collected_subscriptions, visited)
@@ -74,7 +66,6 @@ def get_followers_at_depth(user_id, depth, collected_followers=None, collected_s
     return collected_followers, collected_subscriptions
 
 
-# Класс для работы с Neo4j
 class Neo4jHandler:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -164,7 +155,7 @@ class Neo4jHandler:
         """, subscriber_id=subscriber_id, group_id=group_id)
 
 
-# Чтение переменных из .env файла
+
 access_token = os.getenv("VK_ACCESS_TOKEN")
 user_id = os.getenv("VK_USER_ID")
 neo4j_uri = os.getenv("NEO4J_URI")
@@ -178,7 +169,7 @@ logging.info(f"Глубина: {depth}")
 
 vk_session = vk_api.VkApi(token=access_token)
 vk = vk_session.get_api()
-
+#
 followers, subscriptions = get_followers_at_depth(user_id, depth)
 logging.info(f"Фолловеры: {followers}")
 logging.info(f"Подписки: {subscriptions}")
@@ -225,14 +216,14 @@ for subscription in subscriptions:
     except Exception as e:
         logging.error(f"Ошибка при сохранении группы {group_info['id']}: {e}")
 
-# Запросы на выборку:
+
 total_users = neo4j_handler.get_total_users()
 total_groups = neo4j_handler.get_total_groups()
 top_users = neo4j_handler.get_top_users_by_followers(n)
 top_groups = neo4j_handler.get_top_groups_by_subscribers(n)
 mutual_followers = neo4j_handler.get_mutual_followers()
 
-# Вывод результатов
+
 print(f"Всего пользователей: {total_users}")
 print(f"Всего групп: {total_groups}")
 print(f"Топ {n} пользователей по количеству фолловеров:")
@@ -242,5 +233,5 @@ print(json.dumps(top_groups, indent=4, ensure_ascii=False))
 print(f"Пользователи, которые являются фолловерами друг друга:")
 print(json.dumps(mutual_followers, indent=4, ensure_ascii=False))
 
-# Закрытие соединения с Neo4j
+
 neo4j_handler.close()
