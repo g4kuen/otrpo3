@@ -1,7 +1,7 @@
 import vk_api
 import json
 import os
-
+#
 with open('acess_token.txt', 'r') as file:
     access_token = file.read()
 print(access_token)
